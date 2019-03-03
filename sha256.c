@@ -7,7 +7,13 @@
 // For using fixed bit lenght integer.
 #include <stdint.h>
 
-void sha256();
+void sha256(){
+
+  // The K constants.
+  uint32_t K[] = { 
+
+
+}
 
 //See 4.2.2 for definitions
 uint32_t sig0(uint32_t x);
@@ -16,8 +22,17 @@ uint32_t sig1(uint32_t x);
 uint32_t rotr(uint32_t n, uint32_t x);
 uint32_t shr(uint32_t n, uint32_t x);
 
+//See Section 4.1.2 for definitions
+uint32_t SIG0(uint32_t x);
+uint32_t SIG1(uint32_t x)l
+
+//See Section 4.1.2 for definitions
+uint32_t Ch(uint32_t x, uint32_t y, uint32_t z);
+uint32_t Maj(uint32_t x, uint32_t y, uint32_t z);
+
 int main(int argc, char *argv[]){
 
+  sha256();
        
    return 0:
 }
@@ -56,7 +71,7 @@ void sha256() {
 
   //From page 22, W[t] = ...
   for (t = 16; t < 64; t++)
-    sig1(W[t-2]) + W[t-7] + sig0(W[t-15]) + W [t-16];
+   W[t] = sig1(W[t-2]) + W[t-7] + sig0(W[t-15]) + W [t-16];
 
   // Initialise a,b,c ..  and e as per step 2, Page 22.
   a = H[0]; b = H[1]; c = H[2]; d = H[3]; 
@@ -64,8 +79,8 @@ void sha256() {
 
   //Step 3 
   for (t= 0; t< 64; t++) {
-    T1 = h + SIG_1 (e) + Ch (e, f, g) + K[t] + W[t];
-    T2 = SIG_0(a) + Maj(a, b, c);
+    T1 = h + SIG1 (e) + Ch (e, f, g) + K[t] + W[t];
+    T2 = SIG0(a) + Maj(a, b, c);
     h = g;
     g = f;
     f = e;
@@ -110,4 +125,22 @@ uint32_t sig0(uint32_t x){
 uint32_t sig1(uint32_t x){
   //See sections 3.2 and 4.1.2 for definitions.
   return (rotr(17, x) ^ rotr(19, x) ^ shr(10,x));
+}
+
+
+uint32_t SIG0(uint32_t x) {
+ return (rotr(2, x) ^ rotr(13, x) ^ rotr(22,x));
+}
+
+uint32_t SIG1(uint32_t x) {
+return (rotr(6,x) ^ rotr(11,x) ^ rotr(25,x));
+}
+
+
+uint32_t Ch(uint32_t x, uint32_t y, uint32_t z) {
+  return((x & y) ^ ((!x) & z));
+}
+
+uint32_t Maj(uint32_t x, uint32_t y, uint32_t z) {
+  return ((x & y) ^ (x & z) ^ (y & z));
 }
