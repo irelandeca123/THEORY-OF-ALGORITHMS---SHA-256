@@ -17,13 +17,13 @@ union msgblock  {
 //A flag for where we are in reading the file.
 enum status {READ,PAD0, PAD1, FINISH};
 
-
 /****************************** MACROS ******************************/
-
+/***SHA256 Algorithm methods **/
 #define rotl(x, n) ((x << n) | (x >> (32 - n)))
 #define rotr(x, n) ((x >> n) | (x << (32 - n)))
 #define shr(x, n) (x >> n)
 
+/**FUNCTIONS & CONSTANTS **/
 #define Ch(x, y, z) ((x & y) ^ (~(x) & z ))
 #define Maj(x, y, z) ((x & y) ^ (x & z) ^ (y & z))
 #define sig0(x) (rotr(x, 2) ^ rotr(x, 13) ^ rotr(x, 22))
@@ -32,13 +32,10 @@ enum status {READ,PAD0, PAD1, FINISH};
 #define SIG1(x) (rotr(x, 17) ^ rotr(x, 19) ^ shr(x, 10))
 
 /* https://stackoverflow.com/questions/19275955/convert-little-endian-to-big-endian?fbclid=IwAR0GltPBYQgMxLPmjIGt4VEbITE9w_T6jCmOiLnKPHsByJT3zN0NSHxA5aY */
-
 /********************* Converting 32 bit integers to big integer (Endian) *********/
-
 #define swapE32(x)(((x) >> 24) | (((x) & 0x00FF0000) >> 8) | (((x) & 0x0000FF00) << 8) | ((x) << 24))
 
-/******************* Converting 64 bit integers to 32 (Endian) **************/
-
+/******************* Converting 64 bit integers to 32 (big => little endian) **************/
 #define SWAP_E64(x)( \
                    (( (x) &  0x00000000000000ff) << 56) | \
                    (( (x) &  0x000000000000ff00) << 40) | \
@@ -50,7 +47,6 @@ enum status {READ,PAD0, PAD1, FINISH};
                    (( (x) &  0xff00000000000000) >> 56))
 
 /* https://www.geeksforgeeks.org/little-and-big-endian-mystery/?fbclid=IwAR0k-OFxVfSTY8L2Fl4FXhwQ-NCfVNm-HK8205srh7WSdPXt_YVv8Yrw5mE */
-
 /******************** Checking if endian is big or little *************/
 #define IS_BIGE (*(uint16_t *)"\0\xff" < 0x100)
 
@@ -59,23 +55,30 @@ void sha256(FILE *file);
 
 int nextmsgblock(FILE *file, union msgblock *M, enum status *S, int *nobits);
 
-
+/** https://www.programmingsimplified.com/c-program-read-file?fbclid=IwAR0b1VYHSQS8Fv8zDDxNc0X4pJft6f5PqJwdQ21I6_zhnUYSVqiSp7WJDfE **/
 //Start of the show.
 int main(int argc, char *argv[]){
 
-  //Open the file given as the first command line argument.      
+  printf("File Input: \n");
+
+  //Open the file given as the first command line argument.
   FILE *file;
   file = fopen(argv[1], "r");
-
-  //Should do error checking here.
-  
+   FILE *fprint = fopen(argv[1], "r"); 
+ 
+  //char that will be used for reading the file.
+  char ch;    
+  //checking if the file is empty, error checking.
   if (file == NULL){
         printf("No file to be open mentioned.\n");
   }
   else{
-              
+   //while loop to read the file contents       
+   while((ch = fgetc(fprint)) != EOF)
+//   printf("File Input: \n");
+   printf("%c", ch);            
   //Run the secure hash algorithm on the file.
-  sha256(file);
+   sha256(file);
   }
   //Close the file
   fclose(file);
@@ -88,41 +91,31 @@ int nextmsgblock (FILE *file, union msgblock *M, enum status *S, int *nobits) {
          //The number of bytes we get from fread.    
          int nobytes;
 
-          //For looping
+         //For looping
          int i;
           
          // If we have finished all the message blocks, then S should be FINISH.
-         if (*S == FINISH)
-             return 0;
-            
+         if (*S == FINISH){
+             return 0;   
+         }   
          //Otherwise, check if we need another block of padding.
          if (*S == PAD0 || *S == PAD1) {
                 //Set the first 56 bytes to all zero bits.    
                 for (i = 0; i < 56; i++)
                     M->e[i] = 0x00;
-                //Set the last 64 bits to the number of bits in the file (should be big-endian).
-        //        if (IS_BIGE){
-        //        printf(" 1:Is Big");        
+                //Set the last 64 bits to the number of bits in the file (should be big-endian).        
                 M->s[7] = *nobits;
-        //        }
-        //        else {
-        //        printf("1:Is not big");
                 M->s[7] = SWAP_E64(M->s[7]);
-        //        }
                 //Tell S we are finished.
                 *S = FINISH;
                 //If S was PAD1, then set the first bit of M to one.
                 if (*S == PAD1)
                     M->e[0] = 0x80;
-                    //Keep the loop in sha256 going for one more iteration.
+                //Keep the loop in sha256 going for one more iteration.
                 return 1;
           }
-           
           //If we get down here, we haven't finished reading the file (S == READ).
           nobytes = fread(M->e, 1, 64, file);
-              
-          //Keep track of the number of bytes we've read.
-          // *nobits = *nobits + (nobytes * 8);
           *nobits +=nobytes *8;
           //If we read less than 56 bytes, we can put all padding in this message block.   
           if (nobytes < 56 ){
@@ -134,19 +127,11 @@ int nextmsgblock (FILE *file, union msgblock *M, enum status *S, int *nobits) {
                       nobytes = nobytes +1;
                       M->e[nobytes] = 0x00;
                 }
-                //Append the file size in bits as a (should be big endian) unsigned 64 bits int.    
-                // M->e[nobytes] = 0x80;           
-                // if (IS_BIGE) {
-                // printf("IS big");        
-                 M->s[7] = *nobits;
-               //  }
-                      
-               //  else {           
-               // printf("is not big");
-                M->s[7] = SWAP_E64(M->s[7]);
-                //  }    
+                //Append the file size in bits as a (should be big endian) unsigned 64 bits int.            
+                  M->s[7] = *nobits;
+                  M->s[7] = SWAP_E64(M->s[7]); 
                 //Tell S we are finished.
-               *S = FINISH;
+                 *S = FINISH;
             //Otherwise,check if we can put some padding into this message block.       
             }
             else if (nobytes < 64) {
@@ -154,19 +139,18 @@ int nextmsgblock (FILE *file, union msgblock *M, enum status *S, int *nobits) {
                 *S = PAD0;
                 //Put the one bit into the current block.
                 M->e[nobytes] = 0x80;
-                         //Pad the rest of the block with zero bits.
+                //Pad the rest of the block with zero bits.
                 while (nobytes < 64) {
                       nobytes = nobytes + 1;
                       M->e[nobytes] = 0x00;
-                                                                                  }
+                }
             //Otherwise, check if we're just at the end of the file.
-                 } 
+             } 
             else if (feof(file)){
                      //Tell S that we need another message block with all the padding.
                      *S = PAD1;  
              }
-
-                 //If we get this far, then return 1 so that this function is called again.
+            //If we get this far, then return 1 so that this function is called again.
             return 1;
 }   
                     
@@ -227,8 +211,7 @@ void sha256(FILE *file){
   int i, t;
 
   while (nextmsgblock(file,&M, &S, &nobits)) {
-  
-                                                 
+                                                   
      //From page 22, W[t] = M[t] for 0<= t <= 15.
      for (t = 0; t < 16; t++)
      W[t] = swapE32(M.t[t]);
@@ -265,13 +248,11 @@ void sha256(FILE *file){
      H[7] += h;
 
   }
-  printf("HASH RESULT: \n");
-  printf("\n====================================================================== \n");
-    // printf("%08x %08x %08x %08x %08x %08x %08x %08x\n", H[0], H[1], H[2], H[3], H[4], H[5], H[6], H[7])
-  for (int i = 0; i < 8; i++){
-            printf("%xn", H[i]);   
-//printf("%x %x %x %x %x %x %x %x\n", H[0], H[1], H[2], H[3], H[4], H[5], H[6], H[7]);
-  }
-  printf("\n====================================================================== \n");
+  //Print the output (hash result)
+  printf("\nHASH RESULT:");
+  printf("\n========================================================================= \n");
+  printf("%08x %08x %08x %08x %08x %08x %08x %08x", H[0], H[1], H[2], H[3], H[4], H[5], H[6], H[7]);
+  printf("\n========================================================================= \n");
+
 }
 
