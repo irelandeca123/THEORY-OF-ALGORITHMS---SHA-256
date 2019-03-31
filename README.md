@@ -15,7 +15,11 @@ integers written in base 2.
 - RotR(A, n) denotes the circular right shift of n bits of the binary word A.
 - ShR(A, n) denotes the right shift of n bits of the binary word A.
 - AkB denotes the concatenation of the binary words A and B.
-
+### Steps Involved
+- Padding
+- Block decomposition
+- Hash computation
+- Implementation: signatures
 
 #### Resources
 [Algorithm PDF Resource File](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf)
