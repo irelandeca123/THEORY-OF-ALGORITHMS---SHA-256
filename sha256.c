@@ -34,8 +34,8 @@ enum status {READ,PAD0, PAD1, FINISH};
 //uint32_t Ch(uint32_t x, uint32_t y, uint32_t z);
 //uint32_t Maj(uint32_t x, uint32_t y, uint32_t z);
 
-#define rotr(a,b) (((a) << (b)) | ((a) >> (32-(b))))
-#define shr(a,b) (((a) >> (b)) | ((a) << (32-(b))))
+#define shr(a,b) (((a) << (b)) | ((a) >> (32-(b))))
+#define rotr(a,b) (((a) >> (b)) | ((a) << (32-(b))))
 
 #define Ch(x,y,z) (((x) & (y)) ^ (~(x) & (z)))
 #define Maj(x,y,z) (((x) & (y)) ^ ((x) & (z)) ^ ((y) & (z)))
@@ -43,7 +43,6 @@ enum status {READ,PAD0, PAD1, FINISH};
 #define sig1(x) (rotr(x,6) ^ rotr(x,11) ^ rotr(x,25))
 #define SIG0(x) (rotr(x,7) ^ rotr(x,18) ^ ((x) >> 3))
 #define SIG1(x) (rotr(x,17) ^ rotr(x,19) ^ ((x) >> 10))
-
 
 
 // swap byte endian
@@ -58,9 +57,14 @@ enum status {READ,PAD0, PAD1, FINISH};
                   (( (x) &  0x00ff000000000000) >> 40) | \
                   (( (x) &  0xff00000000000000) >> 56))
 
-
 #define IS_BIGE (*(uint16_t *)"\0\xff" < 0x100)
-
+uint64_t swapE644(uint64_t val) {
+            uint64_t x = val;
+            x = (x & 0xffffffff00000000) >> 32 | (x & 0x00000000ffffffff) << 32;
+            x = (x & 0xffff0000ffff0000) >> 16 | (x & 0x0000ffff0000ffff) << 16;
+            x = (x & 0xff00ff00ff00ff00) >>  8 | (x & 0x00ff00ff00ff00ff) <<  8;
+            return x;
+}
 
 //Calculates the SHA256 hash of a file.
 void sha256(FILE *f);
@@ -83,22 +87,6 @@ int main(int argc, char *argv[]){
 
   return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 void sha256(FILE *msgf){ 
  
@@ -158,7 +146,6 @@ void sha256(FILE *msgf){
 
   while (nextmsgblock(msgf,&M, &S, &nobits)) {
   
-  
                                                  
      //From page 22, W[t] = M[t] for 0<= t <= 15.
      for (t = 0; t < 16; t++)
@@ -174,7 +161,7 @@ void sha256(FILE *msgf){
 
      //Step 3 
      for (t= 0; t< 64; t++) {
-     T1 = h + sig1 (e) + Ch (e, f, g) + K[t] + W[t];
+     T1 = h + sig1(e) + Ch(e, f, g) + K[t] + W[t];
      T2 = sig0(a) + Maj(a, b, c);
      h = g;
      g = f;
@@ -196,10 +183,12 @@ void sha256(FILE *msgf){
      H[7] = h + H[7];
 
   }
-     printf("%08x %08x %08x %08x %08x %08x %08x %08x\n", H[0], H[1], H[2], H[3], H[4], H[5], H[6], H[7]);
-
-  }
-
+    // printf("%08x %08x %08x %08x %08x %08x %08x %08x\n", H[0], H[1], H[2], H[3], H[4], H[5], H[6], H[7])
+ // for (int i = 0; i < 8; i++)
+ //           printf("%x ", H[i]);   
+printf("%x %x %x %x %x %x %x %x\n", H[0], H[1], H[2], H[3], H[4], H[5], H[6], H[7]);
+ // }
+}
 //Convert little endian -> big endian
 //#define SWAP_UINT32(x) (((x) >> 24) | (((x) & 0x00FF0000) >> 8) | (((x) & 0x0000FF00) << 8) | ((x) << 24))
 
@@ -243,14 +232,6 @@ void sha256(FILE *msgf){
 //  return ((x & y) ^ (x & z) ^ (y & z));
 //}
 
-uint64_t swapE644(uint64_t val) {
-        uint64_t x = val;
-        x = (x & 0xffffffff00000000) >> 32 | (x & 0x00000000ffffffff) << 32;
-        x = (x & 0xffff0000ffff0000) >> 16 | (x & 0x0000ffff0000ffff) << 16;
-        x = (x & 0xff00ff00ff00ff00) >>  8 | (x & 0x00ff00ff00ff00ff) <<  8;
-        return x;
-}
-
 int nextmsgblock (FILE *msgf, union msgblock *M, enum status *S, uint64_t *nobits) {
 
     //The number of bytes we get from fread.    
@@ -269,7 +250,12 @@ int nextmsgblock (FILE *msgf, union msgblock *M, enum status *S, uint64_t *nobit
         for (i = 0; i < 56; i++)
           M->e[i] = 0x00;
         //Set the last 64 bits to the number of bits in the file (should be big-endian).
+        if (IS_BIGE){
         M->s [7] = *nobits;
+        }
+        else {
+        M->s[7] = swapE644(*nobits);
+        }
         //Tell S we are finished.
        // M->s [7] = swapE644(M->s[7]);
         
@@ -280,7 +266,7 @@ int nextmsgblock (FILE *msgf, union msgblock *M, enum status *S, uint64_t *nobit
     //Keep the loop in sha256 going for one more iteration.
     return 1;
     }
-
+  
      //If we get down here, we haven't finished reading the file (S == READ).
      nobytes = fread(M->e, 1, 64, msgf);
    
@@ -302,11 +288,14 @@ int nextmsgblock (FILE *msgf, union msgblock *M, enum status *S, uint64_t *nobit
 
       if (IS_BIGE) {
         M->s[7] = *nobits;
-     }
+       }
       else {
 
+      //  M->s[7] = *nobits;
+        
         M->s[7] = swapE644(*nobits);
-      }
+//        M->s[7] = *nobits;
+        }
 
 
      //  for(i = 0; i < 8; i++) M->s[i] = (M->s[i]);
