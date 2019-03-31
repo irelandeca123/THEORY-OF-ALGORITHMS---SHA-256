@@ -10,5 +10,16 @@ NIST also provide a number of test vectors to verify correctness of implementati
 ### Resources
 [Algorithm PDF Resource File](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf)
 
+### Running the program:
+
+#### Clone my repository:
+> git clone https://github.com/irelandeca123/THEORY-OF-ALGORITHMS---SHA-256
+
+#### Compile the script using the GCC Compiler, <sha256> can be changed to whatever you prefer:
+> gcc -o <sha256> <sha256.c>
+
+#### Run the script <testingFile> can be changed to the desired .txt file to be tested on:
+> /sha256 <testingFile>
+
 ### References
 [1] - https://www.movable-type.co.uk/scripts/sha256.html
